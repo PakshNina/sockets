@@ -8,9 +8,9 @@ def server():
         hServer.bind(('localhost', 8888))
         print('Server stated')
         hServer.listen()
-
         while True:
                 try:
+                        print('Waiting for the client to connect')
                         hClient, addr = hServer.accept()
                         print('Connection from', addr)
                         client(hClient)
@@ -18,12 +18,10 @@ def server():
                         print('Sorry, as error has occured:', err)
 
 def client(hClient):
-        print(startTime)
         while True:
                 try:
-                        data = str(random.random()) + '\n'
+                        data = str(random.random())
                         hClient.send(data.encode())
-                        print(data)
                         ##timeout 
                         time.sleep(1)
                 except Exception as err:
