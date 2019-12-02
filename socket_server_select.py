@@ -6,6 +6,7 @@ from abc import ABCMeta
 import socket
 import select
 import queue
+import time
 
 
 class Singleton(ABCMeta):
@@ -43,10 +44,12 @@ class SocketSelectServer(object, metaclass=Singleton):
                     self.inputs,
                     self.outputs,
                     self.inputs,
+                    0.1,
                 )
                 self._read_socket(sock_to_read)
                 self._write_socket(sock_to_write)
                 self._exception_socket(sock_errors)
+                time.sleep(0.1)
             else:
                 self._initialize()
 
@@ -75,7 +78,7 @@ class SocketSelectServer(object, metaclass=Singleton):
         self.initialized = True
 
     def _read_socket(self, sockets_to_read):
-        for sock in sockets_to_read:
+         for sock in sockets_to_read:
             if sock is self.server_socket:
                 self._server_socket(sock)
             else:
@@ -91,30 +94,38 @@ class SocketSelectServer(object, metaclass=Singleton):
         data_from_client = None
         try:
             data_from_client = sock.recv(1024)
+            print(data_from_client.decode())
         except ConnectionResetError:
             self._delete_socket_connection(sock)
         if data_from_client:
             self.messages[sock].put(data_from_client)
             if sock not in self.outputs:
                 self.outputs.append(sock)
-            else:
-                self._delete_socket_connection(self, sock)
+        else:
+            self._delete_socket_connection(sock)
 
     def _write_socket(self, socket_to_write):
         for sock in socket_to_write:
             echo_message = ''.encode()
             try:
-                echo_message = self.messages[sock].get_nowait()
-            except queue.Empty:
+                if sock.fileno() > 0:
+                    echo_message = self.messages[sock].get_nowait()
+                else:
+                    self._delete_socket_connection(sock)
+                    continue
+            except queue.Empty :
                 self.outputs.remove(sock)
             try:
                 sock.send(echo_message)
             except ConnectionResetError:
                 self._delete_socket_connection(sock)
+        
+
 
     def _exception_socket(self, socket_errors):
         for sock in socket_errors:
             self._delete_socket_connection(self, sock)
+            print('trying to delete server socket')
             if sock is self.server_socket:
                 self.inputs = []
                 self.outputs = []
